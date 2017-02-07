@@ -1,4 +1,6 @@
 
+include ../supinclude.am
+
 bin_PROGRAMS=voip_fraud_detection
 voip_fraud_detection_SOURCES=voip_fraud_detection.c \
                              voip_fraud_detection.h \
@@ -17,5 +19,7 @@ voip_fraud_detection_SOURCES=voip_fraud_detection.c \
 voip_fraud_detection_LDADD=-lunirec -ltrap -lm -lnemea-common
 voip_fraud_detection_CXXFLAGS=-std=c++98 -O2
 voip_fraud_detection_CFLAGS=-std=gnu99 -O2
+
+pkgdocdir=${docdir}/voip_fraud_detection
 
 include ../aminclude.am
