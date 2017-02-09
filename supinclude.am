@@ -1,9 +1,12 @@
 pkgdoc_DATA = README.md
 
+SUPFILES:=$(srcdir)/configs/*.sup
+MKDIRFILES:=$(srcdir)/configs/*.mkdir
+
 supdir = ${nemeasupdir}
-sup_DATA := configs/*.mkdir
+sup_DATA = $(MKDIRFILES)
 
 supdetdir = ${nemeasupdir}/detectors
-supdet_DATA := configs/*.sup
+supdet_DATA = $(SUPFILES)
 
-EXTRA_DIST = $(sup_DATA) $(supdet_DATA) README.md
+EXTRA_DIST = $(MKDIRFILES) $(SUPFILES) README.md

@@ -49,7 +49,7 @@ make -j5 DESTDIR=$RPM_BUILD_ROOT install
 %config(noreplace) %{_sysconfdir}/nemea/ipblacklistfilter/bld_userConfigFile.xml
 %config(noreplace) %{_sysconfdir}/nemea/ipblacklistfilter/userConfigFile.xml
 %config(noreplace) %{_sysconfdir}/nemea/cron.d/booterfilter.cron
-%config(noreplace) ${nemeasupdir}/detectors/*.sup
-%config(noreplace) ${nemeasupdir}/*.mkdir
+%config(noreplace) %{_datarootdir}/nemea-supervisor/detectors/*.sup
+%config(noreplace) %{_datarootdir}/nemea-supervisor/*.mkdir
 %{_mandir}/man1/*.1.gz
 
