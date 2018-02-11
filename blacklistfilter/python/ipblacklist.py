@@ -18,7 +18,7 @@ class Blacklist(object):
             raise KeyError("Mandatory key `name` was not found for the blacklist.")
 
         if not self.path:
-            raise KeyError("Mandatory key `file` was not found for " + blname + " blacklist.")
+            raise KeyError("Mandatory key `file` was not found for \"" + self.name + "\" blacklist.")
 
     def __contains__(self, elem):
         raise Exception("Inherited class didn't implement __contains__()")
@@ -40,7 +40,7 @@ class IPEntity(object):
         if len(r) == 1:
             return int(r[0])
         elif len(r) == 2:
-            return (int(r[0]), int(r[1]))
+            return int(r[0]), int(r[1])
         else:
             raise ValueError("Unexpected format of ports ({0}).".format(string))
 
@@ -78,7 +78,7 @@ class IPEntity(object):
         srcports = mdict.get("srcports", None)
         dstports = mdict.get("dstports", None)
         if srcports and srcports != '%':
-            #skip the leading delimiter and look for range
+            # skip the leading delimiter and look for range
             r = self.__parse_ports(srcports[1:])
             if isinstance(r, tuple):
                 self.srcportrange = r
@@ -86,7 +86,7 @@ class IPEntity(object):
                 self.srcport = r
 
         if dstports and dstports != '^':
-            #skip the leading delimiter and look for range
+            # skip the leading delimiter and look for range
             r = self.__parse_ports(dstports[1:])
             if isinstance(r, tuple):
                 self.dstportrange = r
@@ -126,7 +126,7 @@ class IPEntity(object):
 
         return s
 
-    def asTuple(self):
+    def as_tuple(self):
         ip = None
         sip = None
         dip = None
@@ -146,15 +146,17 @@ class IPEntity(object):
             else:
                 dip = (self.dstip.start, self.dstip.end)
 
-        return (ip, sip, dip, self.dstport, self.dstportrange, self.srcport, self.srcportrange)
+        return ip, sip, dip, self.dstport, self.dstportrange, self.srcport, self.srcportrange
 
     def __repr__(self):
-        return str(self.asTuple())
+        return str(self.as_tuple())
 
     def __hash__(self):
-        return hash(self.asTuple())
+        return hash(self.as_tuple())
+
     def __eq__(self, other):
-        return self.asTuple() == other.asTuple()
+        return self.as_tuple() == other.as_tuple()
+
     def __ne__(self, other):
         return not(self == other)
 
@@ -200,16 +202,17 @@ class IPEntity(object):
             else:
                 return False
         if self.dstportrange:
-            if dp >= self.dstportrange[0] and dp <= self.dstportrange[1]:
+            if self.dstportrange[0] <= dp <= self.dstportrange[1]:
                 result = True
             else:
                 return False
         if self.srcportrange:
-            if sp >= self.srcportrange[0] and sp <= self.srcportrange[1]:
+            if self.srcportrange[0] <= sp <= self.srcportrange[1]:
                 result = True
             else:
                 return False
         return result
+
 
 class IPBlacklist(Blacklist):
     def __rangesearch(self, a, i, lo, hi):
@@ -233,7 +236,7 @@ class IPBlacklist(Blacklist):
                 lo = mid
 
     def __init__(self, config):
-        super(type(self), self).__init__(config)
+        super().__init__(config)
         lines = []
         self.entities = set()
         self.ips = dict()
@@ -353,10 +356,11 @@ class IPBlacklist(Blacklist):
         return False
 
     def __str__(self):
-        s = super(type(self), self).__str__() + " containing:\n"
+        s = super().__str__() + " containing:\n"
         for entity in self.entities:
             s += "* " + str(entity) + "\n"
         return s
+
 
 def load_config(config_file):
     blacklists = {}
@@ -365,20 +369,22 @@ def load_config(config_file):
         config = yaml.load(f)
     for blname in config:
         c = config[blname]
-        filter_type =  c.get("filter_type", None)
+        filter_type = c.get("filter_type", None)
         if not filter_type:
             raise KeyError("Mandatory key `filter_type` was not found for " + blname + " blacklist.")
         if filter_type == "ip":
             blacklists[blname] = IPBlacklist(c)
     return blacklists
 
-#=======================
+# =======================
 # { Start of Testing code
-#=======================
+# =======================
+
 
 testno = 1
 
-def assertTrue(t, b):
+
+def assert_true(t, b):
     global testno
     print(str(testno) + " expected True")
     print(t.strRecord())
@@ -389,7 +395,8 @@ def assertTrue(t, b):
         print("")
     testno += 1
 
-def assertFalse(t, b):
+
+def assert_false(t, b):
     global testno
     print(str(testno) + " expected False")
     print(t.strRecord())
@@ -399,6 +406,7 @@ def assertFalse(t, b):
         print("error")
         print("")
     testno += 1
+
 
 def test():
     try:
@@ -418,28 +426,28 @@ def test():
     tmplt.createMessage()
     tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
     tmplt.SRC_IP = pytrap.UnirecIPAddr("1.2.3.4")
-    assertTrue(tmplt, bs[b])
+    assert_true(tmplt, bs[b])
 
     tmplt.SRC_IP = pytrap.UnirecIPAddr("1.2.4.1")
-    assertTrue(tmplt, bs[b])
+    assert_true(tmplt, bs[b])
 
     tmplt.SRC_IP = pytrap.UnirecIPAddr("10.0.0.1")
-    assertFalse(tmplt, bs[b])
+    assert_false(tmplt, bs[b])
 
     tmplt.DST_IP = pytrap.UnirecIPAddr("10.0.1.1")
-    assertFalse(tmplt, bs[b])
+    assert_false(tmplt, bs[b])
 
     tmplt.DST_PORT = 1025
-    assertFalse(tmplt, bs[b])
+    assert_false(tmplt, bs[b])
 
     tmplt.DST_PORT = 1024
-    assertTrue(tmplt, bs[b])
+    assert_true(tmplt, bs[b])
 
     tmplt.SRC_PORT = 1024
-    assertTrue(tmplt, bs[b])
+    assert_true(tmplt, bs[b])
 
     tmplt.DST_IP = pytrap.UnirecIPAddr("10.2.1.1")
-    assertTrue(tmplt, bs[b])
+    assert_true(tmplt, bs[b])
 
     # 1.2.3.4
     # 1.2.4.0/30
@@ -476,7 +484,7 @@ def main():
     rec = pytrap.UnirecTemplate(inputspec)
 
     # Main loop
-    i=1
+    i = 1
     while True:
         try:
             data = trap.recv()
@@ -490,7 +498,7 @@ def main():
         rec.setData(data)
 
         i += 1
-        if i==1000000:
+        if i == 1000000:
             break
         for bl in blacklists:
             if rec in blacklists[bl]:
