@@ -5,6 +5,7 @@ import sys
 import re
 import yaml
 
+
 class Blacklist(object):
     def __init__(self, config):
         """Create a blacklist instance from the list stored in file path"""
@@ -286,11 +287,12 @@ class IPBlacklist(Blacklist):
                         self.dstipsranges[e.dstip].add(e)
                     else:
                         self.dstipsranges[e.dstip] = set([e])
-            self.ipsrangeslist = self.ipsranges.keys()
+
+            self.ipsrangeslist = list(self.ipsranges.keys())
             self.ipsrangeslist.sort()
-            self.srcipsrangeslist = self.srcipsranges.keys()
+            self.srcipsrangeslist = list(self.srcipsranges.keys())
             self.srcipsrangeslist.sort()
-            self.dstipsrangeslist = self.dstipsranges.keys()
+            self.dstipsrangeslist = list(self.dstipsranges.keys())
             self.dstipsrangeslist.sort()
 
     def __contains__(self, rec):
