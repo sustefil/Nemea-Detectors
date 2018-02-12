@@ -227,7 +227,7 @@ class IPBlacklist(Blacklist):
                     return a[hi]
                 else:
                     return None
-            mid = (lo + hi) / 2
+            mid = (lo + hi) // 2
             if i in a[mid]:
                 return a[mid]
             elif i < a[mid].start:
