@@ -421,45 +421,45 @@ def test():
     for b in bs:
         print(str(bs[b]))
 
-    print("Tests:")
     tmplt = pytrap.UnirecTemplate("ipaddr SRC_IP,ipaddr DST_IP,uint16 SRC_PORT,uint16 DST_PORT")
-    tmplt.createMessage()
-    tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
-    tmplt.SRC_IP = pytrap.UnirecIPAddr("1.2.3.4")
-    assert_true(tmplt, bs[b])
 
-    tmplt.SRC_IP = pytrap.UnirecIPAddr("1.2.4.1")
-    assert_true(tmplt, bs[b])
+    start = time.time()
 
-    tmplt.SRC_IP = pytrap.UnirecIPAddr("10.0.0.1")
-    assert_false(tmplt, bs[b])
+    for i in range(100000):
+        tmplt.createMessage()
+        tmplt.DST_IP = pytrap.UnirecIPAddr("192.168.5.5")
+        tmplt.SRC_IP = pytrap.UnirecIPAddr("1.2.3.10")
+        assert_true(tmplt, bs[b])
 
-    tmplt.DST_IP = pytrap.UnirecIPAddr("10.0.1.1")
-    assert_false(tmplt, bs[b])
+        tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
+        tmplt.SRC_IP = pytrap.UnirecIPAddr("210.57.128.5")
+        assert_true(tmplt, bs[b])
 
-    tmplt.DST_PORT = 1025
-    assert_false(tmplt, bs[b])
+        tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
+        tmplt.SRC_IP = pytrap.UnirecIPAddr("1.1.1.1")
+        assert_false(tmplt, bs[b])
+    #
+    # tmplt.SRC_IP = pytrap.UnirecIPAddr("10.0.0.1")
+    # assert_false(tmplt, bs[b])
+    #
+    # tmplt.DST_IP = pytrap.UnirecIPAddr("10.0.1.1")
+    # assert_false(tmplt, bs[b])
+    #
+    # tmplt.DST_PORT = 1025
+    # assert_false(tmplt, bs[b])
+    #
+    # tmplt.DST_PORT = 1024
+    # assert_true(tmplt, bs[b])
+    #
+    # tmplt.SRC_PORT = 1024
+    # assert_true(tmplt, bs[b])
+    #
+    # tmplt.DST_IP = pytrap.UnirecIPAddr("10.2.1.1")
+    # assert_true(tmplt, bs[b])
 
-    tmplt.DST_PORT = 1024
-    assert_true(tmplt, bs[b])
-
-    tmplt.SRC_PORT = 1024
-    assert_true(tmplt, bs[b])
-
-    tmplt.DST_IP = pytrap.UnirecIPAddr("10.2.1.1")
-    assert_true(tmplt, bs[b])
-
-    # 1.2.3.4
-    # 1.2.4.0/30
-    # 10.0.0.0/20>10.0.1.0/24%^1-1024
-    # 10.1.0.0/20>%1-1024^
-    # >10.2.0.0/20%1-1024^
-    # >1.1.1.1%^80
-    # >1.1.1.2%8080^80
-    # >2.2.2.3/32
-    # >2.2.2.4/32%^
-    # 2.2.2.5/32>%^
-    # 2.2.2.6/32
+    end = time.time()
+    print("Tests PASSED")
+    print(end - start)
 
     import sys
     sys.exit()
