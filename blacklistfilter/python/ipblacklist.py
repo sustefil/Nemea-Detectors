@@ -4,7 +4,7 @@ import pytrap
 import sys
 import re
 import yaml
-
+import time
 
 class Blacklist(object):
     def __init__(self, config):
@@ -386,25 +386,21 @@ testno = 1
 
 def assert_true(t, b):
     global testno
-    print(str(testno) + " expected True")
-    print(t.strRecord())
-    if t in b:
-        print("success")
-    else:
-        print("error")
-        print("")
+    # print(str(testno) + " expected True")
+    # print(t.strRecord())
+    if not (t in b):
+        raise Exception("Assertion fail")
+
     testno += 1
 
 
 def assert_false(t, b):
     global testno
-    print(str(testno) + " expected False")
-    print(t.strRecord())
-    if not (t in b):
-        print("success")
-    else:
-        print("error")
-        print("")
+    # print(str(testno) + " expected False")
+    # print(t.strRecord())
+    if t in b:
+        raise Exception("Assertion fail")
+
     testno += 1
 
 
