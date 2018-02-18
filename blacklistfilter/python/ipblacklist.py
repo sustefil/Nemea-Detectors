@@ -169,49 +169,12 @@ class IPEntity(object):
     def __contains__(self, rec):
         if not isinstance(rec, pytrap.UnirecTemplate):
             raise TypeError("Expected UnirecTempate type.")
-        sip = rec.SRC_IP
-        dip = rec.DST_IP
-        sp = rec.SRC_PORT
-        dp = rec.DST_PORT
-
-        result = False
 
         if self.ip:
-            if sip in self.ip or dip in self.ip:
-                result = True
+            if rec.SRC_IP in self.ip or rec.DST_IP in self.ip:
+                return True
             else:
                 return False
-        if self.srcip:
-            if sip in self.srcip:
-                result = True
-            else:
-                return False
-        if self.dstip:
-            if dip in self.dstip:
-                result = True
-            else:
-                return False
-        if self.srcport:
-            if sp == self.srcport:
-                result = True
-            else:
-                return False
-        if self.dstport:
-            if dp == self.dstport:
-                result = True
-            else:
-                return False
-        if self.dstportrange:
-            if self.dstportrange[0] <= dp <= self.dstportrange[1]:
-                result = True
-            else:
-                return False
-        if self.srcportrange:
-            if self.srcportrange[0] <= sp <= self.srcportrange[1]:
-                result = True
-            else:
-                return False
-        return result
 
 
 class IPBlacklist(Blacklist):
@@ -237,7 +200,6 @@ class IPBlacklist(Blacklist):
 
     def __init__(self, config):
         super().__init__(config)
-        lines = []
         self.entities = set()
         self.ips = dict()
         self.srcips = dict()
@@ -308,20 +270,8 @@ class IPBlacklist(Blacklist):
                 if rec in e:
                     return True
 
-        if rec.SRC_IP in self.srcips:
-            entitylist = self.srcips[rec.SRC_IP]
-            for e in entitylist:
-                if rec in e:
-                    return True
-
         if rec.DST_IP in self.ips:
             entitylist = self.ips[rec.DST_IP]
-            for e in entitylist:
-                if rec in e:
-                    return True
-
-        if rec.DST_IP in self.dstips:
-            entitylist = self.dstips[rec.DST_IP]
             for e in entitylist:
                 if rec in e:
                     return True
@@ -339,20 +289,6 @@ class IPBlacklist(Blacklist):
                     if rec in e:
                         return True
 
-        if self.srcipsrangeslist:
-            hi = len(self.srcipsrangeslist) - 1
-            key = self.__rangesearch(self.srcipsrangeslist, rec.SRC_IP, 0, hi)
-            if key:
-                for e in self.srcipsranges[key]:
-                    if rec in e:
-                        return True
-        if self.dstipsrangeslist:
-            hi = len(self.dstipsrangeslist) - 1
-            key = self.__rangesearch(self.dstipsrangeslist, rec.DST_IP, 0, hi)
-            if key:
-                for e in self.dstipsranges[key]:
-                    if rec in e:
-                        return True
         return False
 
     def __str__(self):
@@ -374,6 +310,7 @@ def load_config(config_file):
             raise KeyError("Mandatory key `filter_type` was not found for " + blname + " blacklist.")
         if filter_type == "ip":
             blacklists[blname] = IPBlacklist(c)
+
     return blacklists
 
 # =======================
@@ -479,6 +416,7 @@ def main():
     trap.setDataFmt(0, fmttype, inputspec)
     rec = pytrap.UnirecTemplate(inputspec)
 
+
     # Main loop
     i = 1
     while True:
@@ -496,6 +434,7 @@ def main():
         i += 1
         if i == 1000000:
             break
+
         for bl in blacklists:
             if rec in blacklists[bl]:
                 #print("{0} in {1}.".format(rec.strRecord(), bl))
