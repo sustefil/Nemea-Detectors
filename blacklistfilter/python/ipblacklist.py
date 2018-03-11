@@ -92,6 +92,7 @@ class IPEntity(object):
                 self.dstportrange = r
             else:
                 self.dstport = r
+
         if self.ip:
             if "/" in self.ip:
                 self.ip = pytrap.UnirecIPAddrRange(self.ip)
@@ -130,6 +131,7 @@ class IPEntity(object):
         ip = None
         sip = None
         dip = None
+
         if self.ip:
             if isinstance(self.ip, pytrap.UnirecIPAddr):
                 ip = self.ip
@@ -211,6 +213,7 @@ class IPEntity(object):
                 result = True
             else:
                 return False
+
         return result
 
 
@@ -237,7 +240,6 @@ class IPBlacklist(Blacklist):
 
     def __init__(self, config):
         super().__init__(config)
-        lines = []
         self.entities = set()
         self.ips = dict()
         self.srcips = dict()
@@ -245,6 +247,10 @@ class IPBlacklist(Blacklist):
         self.ipsranges = dict()
         self.srcipsranges = dict()
         self.dstipsranges = dict()
+
+        self.subnetlist = None
+        self.srcsubnetlist = None
+        self.dstsubnetlist = None
 
         # Load and parse blacklist
         with open(self.path, "r") as f:
@@ -268,6 +274,7 @@ class IPBlacklist(Blacklist):
                         self.ipsranges[e.ip].add(e)
                     else:
                         self.ipsranges[e.ip] = set([e])
+
             if e.srcip:
                 if isinstance(e.srcip, pytrap.UnirecIPAddr):
                     if e.srcip in self.srcips:
@@ -279,6 +286,7 @@ class IPBlacklist(Blacklist):
                         self.srcipsranges[e.srcip].add(e)
                     else:
                         self.srcipsranges[e.srcip] = set([e])
+
             if e.dstip:
                 if isinstance(e.dstip, pytrap.UnirecIPAddr):
                     if e.dstip in self.dstips:
@@ -291,12 +299,40 @@ class IPBlacklist(Blacklist):
                     else:
                         self.dstipsranges[e.dstip] = set([e])
 
-            self.ipsrangeslist = list(self.ipsranges.keys())
-            self.ipsrangeslist.sort()
-            self.srcipsrangeslist = list(self.srcipsranges.keys())
-            self.srcipsrangeslist.sort()
-            self.dstipsrangeslist = list(self.dstipsranges.keys())
-            self.dstipsrangeslist.sort()
+        # Fill the UnirecSubnetList objects for searching with ip_prefix_search
+        if self.ipsranges:
+            self.subnetlist = pytrap.UnirecSubnetList()
+            for subnet in self.ipsranges.keys():
+                subnet = subnet.cidrFormat()
+                if subnet:
+                    self.subnetlist.addNetwork(subnet)
+
+            self.subnetlist.createContext()
+
+        if self.srcipsranges:
+            self.srcsubnetlist = pytrap.UnirecSubnetList()
+            for subnet in self.srcipsranges.keys():
+                subnet = subnet.cidrFormat()
+                if subnet:
+                    self.srcsubnetlist.addNetwork(subnet)
+
+            self.srcsubnetlist.createContext()
+
+        if self.dstipsranges:
+            self.dstsubnetlist = pytrap.UnirecSubnetList()
+            for subnet in self.dstipsranges.keys():
+                subnet = subnet.cidrFormat()
+                if subnet:
+                    self.dstsubnetlist.addNetwork(subnet)
+
+            self.dstsubnetlist.createContext()
+
+        self.ipsrangeslist = list(self.ipsranges.keys())
+        self.ipsrangeslist.sort()
+        self.srcipsrangeslist = list(self.srcipsranges.keys())
+        self.srcipsrangeslist.sort()
+        self.dstipsrangeslist = list(self.dstipsranges.keys())
+        self.dstipsrangeslist.sort()
 
     def __contains__(self, rec):
         """Check if any entity from this blacklist matches rec (UniRec record).
@@ -326,33 +362,44 @@ class IPBlacklist(Blacklist):
                 if rec in e:
                     return True
 
-        if self.ipsrangeslist:
-            hi = len(self.ipsrangeslist) - 1
-            key = self.__rangesearch(self.ipsrangeslist, rec.DST_IP, 0, hi)
-            if key:
-                for e in self.ipsranges[key]:
-                    if rec in e:
-                        return True
-            key = self.__rangesearch(self.ipsrangeslist, rec.SRC_IP, 0, hi)
-            if key:
-                for e in self.ipsranges[key]:
-                    if rec in e:
-                        return True
 
-        if self.srcipsrangeslist:
-            hi = len(self.srcipsrangeslist) - 1
-            key = self.__rangesearch(self.srcipsrangeslist, rec.SRC_IP, 0, hi)
-            if key:
-                for e in self.srcipsranges[key]:
-                    if rec in e:
-                        return True
-        if self.dstipsrangeslist:
-            hi = len(self.dstipsrangeslist) - 1
-            key = self.__rangesearch(self.dstipsrangeslist, rec.DST_IP, 0, hi)
-            if key:
-                for e in self.dstipsranges[key]:
-                    if rec in e:
-                        return True
+        if self.subnetlist:
+            if rec.DST_IP in self.subnetlist:
+                # TODO: Ineffective, find a better solution
+                # because ip_prefix_search only returns true/false, we have to search for the IP range manually
+                hi = len(self.ipsrangeslist) - 1
+                key = self.__rangesearch(self.ipsrangeslist, rec.DST_IP, 0, hi)
+                if key:
+                    for e in self.ipsranges[key]:
+                        if rec in e:
+                            return True
+
+            if rec.SRC_IP in self.subnetlist:
+                hi = len(self.ipsrangeslist) - 1
+                key = self.__rangesearch(self.ipsrangeslist, rec.SRC_IP, 0, hi)
+                if key:
+                    for e in self.ipsranges[key]:
+                        if rec in e:
+                            return True
+
+        if self.srcsubnetlist:
+            if rec.SRC_IP in self.srcsubnetlist:
+                hi = len(self.srcipsrangeslist) - 1
+                key = self.__rangesearch(self.srcipsrangeslist, rec.SRC_IP, 0, hi)
+                if key:
+                    for e in self.srcipsranges[key]:
+                        if rec in e:
+                            return True
+
+        if self.dstsubnetlist:
+            if rec.DST_IP in self.dstsubnetlist:
+                hi = len(self.dstipsrangeslist) - 1
+                key = self.__rangesearch(self.dstipsrangeslist, rec.DST_IP, 0, hi)
+                if key:
+                    for e in self.dstipsranges[key]:
+                        if rec in e:
+                            return True
+
         return False
 
     def __str__(self):
@@ -421,19 +468,14 @@ def test():
 
     start = time.time()
 
-    for i in range(100000):
-        tmplt.createMessage()
-        tmplt.DST_IP = pytrap.UnirecIPAddr("192.168.5.5")
-        tmplt.SRC_IP = pytrap.UnirecIPAddr("1.2.3.10")
-        assert_true(tmplt, bs[b])
 
-        tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
-        tmplt.SRC_IP = pytrap.UnirecIPAddr("210.57.128.5")
-        assert_true(tmplt, bs[b])
+    tmplt.createMessage()
+    tmplt.SRC_IP = pytrap.UnirecIPAddr("58.242.83.8")
+    assert_true(tmplt, bs[b])
 
-        tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
-        tmplt.SRC_IP = pytrap.UnirecIPAddr("1.1.1.1")
-        assert_false(tmplt, bs[b])
+    tmplt.DST_IP = pytrap.UnirecIPAddr("0.0.0.0")
+    tmplt.SRC_IP = pytrap.UnirecIPAddr("1.1.1.1")
+    assert_false(tmplt, bs[b])
     #
     # tmplt.SRC_IP = pytrap.UnirecIPAddr("10.0.0.1")
     # assert_false(tmplt, bs[b])
@@ -467,7 +509,7 @@ def test():
 
 
 def main():
-    blacklists = load_config("config.yml")
+    blacklists = load_config("testconfig.yml")
     trap = pytrap.TrapCtx()
     trap.init(sys.argv, 1, 1)
 
