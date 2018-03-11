@@ -53,8 +53,8 @@ class IPEntity(object):
         self.srcport = None
         self.srcportrange = None
 
-        self.__pattern = re.compile(r"""^(?P<ip>[.:0-9]*?)(?P<mask>/\d*?)?(?P<dstip>>[.:0-9]*(?P<dstmask>/\d*?)??)?(?P<srcports>%[-0-9]*?)?(?P<dstports>\^[-0-9]*?)?$""")
-        match = self.__pattern.match(string)
+        self.__pattern = re.compile(r"""^(?P<ip>[.:0-9a-f]*?)(?P<mask>/\d*?)?(?P<dstip>>[.:0-9]*(?P<dstmask>/\d*?)??)?(?P<srcports>%[-0-9]*?)?(?P<dstports>\^[-0-9]*?)?$""")
+        match = self.__pattern.match(string.lower())
         if not match:
             raise ValueError("Given string does not match format.")
         mdict = match.groupdict()
