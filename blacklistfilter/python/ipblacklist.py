@@ -334,7 +334,7 @@ class IPBlacklist(Blacklist):
         self.dstipsrangeslist = list(self.dstipsranges.keys())
         self.dstipsrangeslist.sort()
 
-    def __contains__(self, rec):
+    def contains(self, rec):
         """Check if any entity from this blacklist matches rec (UniRec record).
 
         This function returns True if rec matches the blacklist."""
@@ -342,25 +342,25 @@ class IPBlacklist(Blacklist):
             entitylist = self.ips[rec.SRC_IP]
             for e in entitylist:
                 if rec in e:
-                    return True
+                    return "src"
 
         if rec.SRC_IP in self.srcips:
             entitylist = self.srcips[rec.SRC_IP]
             for e in entitylist:
                 if rec in e:
-                    return True
+                    return "src"
 
         if rec.DST_IP in self.ips:
             entitylist = self.ips[rec.DST_IP]
             for e in entitylist:
                 if rec in e:
-                    return True
+                    return "dst"
 
         if rec.DST_IP in self.dstips:
             entitylist = self.dstips[rec.DST_IP]
             for e in entitylist:
                 if rec in e:
-                    return True
+                    return "dst"
 
 
         if self.subnetlist:
@@ -372,7 +372,7 @@ class IPBlacklist(Blacklist):
                 if key:
                     for e in self.ipsranges[key]:
                         if rec in e:
-                            return True
+                            return "dst"
 
             if rec.SRC_IP in self.subnetlist:
                 hi = len(self.ipsrangeslist) - 1
@@ -380,7 +380,7 @@ class IPBlacklist(Blacklist):
                 if key:
                     for e in self.ipsranges[key]:
                         if rec in e:
-                            return True
+                            return "src"
 
         if self.srcsubnetlist:
             if rec.SRC_IP in self.srcsubnetlist:
@@ -389,7 +389,7 @@ class IPBlacklist(Blacklist):
                 if key:
                     for e in self.srcipsranges[key]:
                         if rec in e:
-                            return True
+                            return "src"
 
         if self.dstsubnetlist:
             if rec.DST_IP in self.dstsubnetlist:
@@ -398,9 +398,9 @@ class IPBlacklist(Blacklist):
                 if key:
                     for e in self.dstipsranges[key]:
                         if rec in e:
-                            return True
+                            return "dst"
 
-        return False
+        return None
 
     def __str__(self):
         s = super().__str__() + " containing:\n"
@@ -510,16 +510,24 @@ def test():
 
 def main():
     blacklists = load_config("testconfig.yml")
+    print(blacklists)
     trap = pytrap.TrapCtx()
     trap.init(sys.argv, 1, 1)
 
     # Set the list of required fields in received messages.
     # This list is an output of e.g. flow_meter - basic flow.
-    inputspec = "ipaddr DST_IP,ipaddr SRC_IP,uint16 SRC_PORT,uint16 DST_PORT"
+    inputspec = "ipaddr DST_IP,ipaddr SRC_IP,time TIME_FIRST,time TIME_LAST,uint16 DST_PORT," + \
+                "uint16 SRC_PORT,uint8 PROTOCOL"
+
     fmttype = pytrap.FMT_UNIREC
     trap.setRequiredFmt(0, fmttype, inputspec)
     trap.setDataFmt(0, fmttype, inputspec)
     rec = pytrap.UnirecTemplate(inputspec)
+
+    output_fmt="ipaddr DST_IP,ipaddr SRC_IP,time TIME_FIRST,time TIME_LAST,uint16 DST_PORT," + \
+                "uint16 SRC_PORT,uint8 PROTOCOL,uint8 SRC_ON_BL"
+    UR_Output = pytrap.UnirecTemplate(output_fmt)
+    trap.setDataFmt(0, pytrap.FMT_UNIREC, output_fmt)
 
     # Main loop
     i = 1
@@ -529,19 +537,30 @@ def main():
         except pytrap.FormatChanged as e:
             fmttype, inputspec = trap.getDataFmt(0)
             rec = pytrap.UnirecTemplate(inputspec)
-            trap.setDataFmt(0, fmttype, inputspec)
+            # trap.setDataFmt(0, fmttype, inputspec)
             data = e.data
         if len(data) <= 1:
             break
+
         rec.setData(data)
 
         i += 1
         if i == 1000000:
             break
         for bl in blacklists:
-            if rec in blacklists[bl]:
+            src_or_dst = blacklists[bl].contains(rec)
+            if src_or_dst:
+                msg = UR_Output.createMessage()
+                UR_Output.setData(msg)
+
+                for attr, value in rec:
+                    if hasattr(UR_Output, attr):
+                        setattr(UR_Output, attr, value)
+
+                UR_Output.SRC_ON_BL = 1 if src_or_dst == "src" else 0
+
                 #print("{0} in {1}.".format(rec.strRecord(), bl))
-                trap.send(rec.getData(), 0)
+                trap.send(UR_Output.getData(), 0)
 
     # Free allocated TRAP IFCs
     trap.finalize()
