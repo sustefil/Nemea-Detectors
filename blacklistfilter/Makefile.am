@@ -40,7 +40,7 @@ EXTRA_DIST=blacklist_downloader/bl_downloader.py.in  \
 	   ipdetect/README.md \
 	   ipdetect/ipdetect_config.xml
 
-bin_SCRIPTS=blacklist_downloader/bl_downloader.py
+bin_SCRIPTS=blacklist_downloader/bl_downloader.py ipblacklist_aggregator.py urlblacklist_aggregator.py
 
 dist_blacklistfilter_DATA=blacklist_downloader/bl_downloader_config.xml
 # urldetectsysconfdir=${sysconfdir}/urldetect
