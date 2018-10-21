@@ -274,12 +274,12 @@ int reload_blacklists(black_list_t &v4_list, black_list_t &v6_list, string &file
 
         } else {
             // IP prefix
-            if (!ip_from_str((ip.substr(0, comma_sep)).c_str(), &bl_entry.ip)) {
+            if (!ip_from_str((ip.substr(0, slash_sep)).c_str(), &bl_entry.ip)) {
                 cerr << "WARNING: Invalid IP address in file '" << file << "' on line '" << line_num << "'" << endl;
                 continue;
             }
 
-            ip.erase(0, comma_sep + 1);
+            ip.erase(0, slash_sep + 1);
             bl_entry.prefix_len = (uint8_t) strtol(ip.c_str(), NULL, 0);
         }
 
