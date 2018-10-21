@@ -14,7 +14,7 @@ OUTPUT_FOLDER="output"
 rm -r $OUTPUT_FOLDER 2>/dev/null
 mkdir $OUTPUT_FOLDER
 
-TEST_COUNT=5
+TEST_COUNT=6
 MAIN_RET=0
 for ((i=1; i<=$TEST_COUNT;i++)); do
     # Replace the blacklist in the config file
