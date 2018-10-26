@@ -5,8 +5,17 @@ All test cases have been revised manually
 
 Blacklists are created the same way as downloader does it (sorting, indexing)
 
+IPV4
+
 ip1.blist - The first three and the last three addresses (mixed src/dst) of testfile_20
 ip2.blist - All src addresses of testfile_20
 ip3.blist - Some subnets (covering addresses from testfile_1000)
 ip4.blist - All (IPv4) addresses collected from the testfile_1000
 ip5.blist - Blacklist created by "production" bl_downloader (mixed blacklists from config)
+
+IPV6
+
+ip1.blist - The first found and the last found IPV6 address (one DST, one SRC) of testfile_1000
+ip2.blist - All SRC IPV6 of testfile_1000
+
+
