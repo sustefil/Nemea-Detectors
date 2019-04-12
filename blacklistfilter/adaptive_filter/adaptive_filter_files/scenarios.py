@@ -25,10 +25,6 @@ class Scenario:
         self.processed_ts = 0
         self.adaptive_entities = set()
 
-    def _get_suffix(self):
-        """ Returns suffix for adaptive blacklist entries, i.e. Adaptive blacklist "magic" index and event ID"""
-        return ',{},{}'.format(adaptive_filter.ADAPTIVE_BLACKLIST_ID, self.id)
-
     def get_entities(self):
         raise NotImplemented
 
@@ -72,7 +68,7 @@ class BotnetDetection(Scenario):
         # Gather all the targets (bots communicating with the C&C server)
         adaptive_entities = set()
         for detection_event in self.grouped_events:
-            adaptive_entities.update([target + self._get_suffix() for target in detection_event["targets"]])
+            adaptive_entities.update([target for target in detection_event["targets"]])
         return adaptive_entities
 
     def convert_to_evidence_fmt(self):
@@ -109,7 +105,7 @@ class DNSDetection(Scenario):
         adaptive_entities = set()
         entities = utils.dns_query(self.key)
         for entity in entities:
-            adaptive_entities.add(str(entity) + self._get_suffix())
+            adaptive_entities.add(str(entity))
         return adaptive_entities
 
     def convert_to_evidence_fmt(self):

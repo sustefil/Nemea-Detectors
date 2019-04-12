@@ -237,14 +237,21 @@ class Processor:
 
         # Processor holds the adaptive current entries, so it can check
         # whether there are new ones and detector file should be created
-        self.current_adaptive_entities = set()
+        self.current_adaptive_entities = dict()
 
         # Set repeater for the given interval
         self.rt = RepeatedTimer(int(process_interval), self.process_events)
 
     def process_events(self):
         global g_scenario_events
-        all_adaptive_entities = set()
+
+        # Dict to store all adaptive entities of all events, the key is an adaptive entity (e.g. IP address of the
+        # suspicious client) and the value is a set of scenario event IDs
+        # example for BotnetDetection: {10.1.1.1: {"54dbf22b-ed04-49b1-a6d2-7a34442a7efb",
+        #                                          "f193e52b-c8d7-4583-80e0-4dd8a949291b"}},
+        # meaning: The suspicious client 10.1.1.1 is being monitored because it communicated with 2 C&C servers
+        all_adaptive_entities = dict()
+
         event_keys_to_send = set()
         c = 0
 
@@ -259,8 +266,13 @@ class Processor:
                 # Update the timestamp
                 scenario_event.processed_ts = time()
 
-            # Gather the adaptive entities for all scenario events
-            all_adaptive_entities.update(scenario_event.adaptive_entities)
+            # Gather the adaptive entities and their event IDs for all scenario events
+            for adaptive_entity in scenario_event.adaptive_entities:
+                try:
+                    all_adaptive_entities[adaptive_entity].add(scenario_event.id)
+                except KeyError:
+                    all_adaptive_entities[adaptive_entity] = set()
+                    all_adaptive_entities[adaptive_entity].add(scenario_event.id)
 
             if scenario_event.first_detection_ts + self.evidence_timeout < time():
                 # Evidence timeout expired, let's export the scenario event
@@ -269,9 +281,6 @@ class Processor:
         for event_key_to_send in event_keys_to_send:
             # Fetch the corresponding event
             event = g_scenario_events[event_key_to_send]
-
-            # Delete the event's adaptive entities, we don't want to track adaptive events of this scenario event anymore
-            all_adaptive_entities.difference_update(event.adaptive_entities)
 
             # Adaptive entities are not relevant in the alert
             del event.adaptive_entities
@@ -282,6 +291,24 @@ class Processor:
             # Delete the sent scenario from the global structure
             del g_scenario_events[event_key_to_send]
 
+            # Delete the event's adaptive entities, so they wont occur in the detector file in the future,
+            # we don't want to track adaptive events of this scenario event anymore, since the evidence timeout passed
+            adaptive_keys_to_del = set()
+            for adaptive_entity, ids in all_adaptive_entities.items():
+                if event.id in ids:
+                    if len(ids) > 1:
+                        # If there are more events belonging to this suspicious client, remove only the event ID,
+                        # not the entire record
+                        ids.remove(event.id)
+                    else:
+                        # If there is only this event ID, delete the entire record
+                        adaptive_keys_to_del.add(adaptive_entity)
+
+            for key in adaptive_keys_to_del:
+                del all_adaptive_entities[key]
+
+        # If the adaptive entities have changed (either there are new events, or some events' evidence timeout passed,
+        # we want to update the detector file
         if all_adaptive_entities != self.current_adaptive_entities:
             self.current_adaptive_entities = all_adaptive_entities
             self._create_detector_file()
@@ -298,8 +325,13 @@ class Processor:
         self.rt.stop()
 
     def _create_detector_file(self):
+        entities = set()
+
+        for entity, ids in self.current_adaptive_entities.items():
+            entities.add('{},{},{}'.format(str(entity), ADAPTIVE_BLACKLIST_ID, ','.join(ids)))
+
         # Create sorted list of entities and their cumulative indexes
-        sorted_entities = sorted(list(self.current_adaptive_entities), key=split_ip)
+        sorted_entities = sorted(list(entities), key=split_ip)
 
         os.makedirs(os.path.dirname(self.detector_file_path), exist_ok=True)
         with open(self.detector_file_path, 'w') as f:
